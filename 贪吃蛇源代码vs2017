@@ -1,0 +1,226 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <Windows.h>
+#include <conio.h>
+#include <time.h>
+#define mapx 100
+#define mapy 25
+
+int score = 0;
+
+struct snap {
+	int snapx;
+	int snapy;
+	struct snap* next;
+};
+
+struct snap* snaphead = NULL;
+
+struct food {
+	int foodx;
+	int foody;
+};
+
+struct food* newfood = NULL;
+
+void mapmake();
+void snapmake(int x, int y);
+void foodmake();
+void move();
+void touchfood();
+bool ifdie();
+void gameover();
+
+char dir = 'd';
+/**************************************/
+int main(void)
+{
+	mapmake();
+	snapmake(15, 15);
+	snapmake(15, 16);
+	snapmake(15, 17);
+	foodmake();
+	while (!ifdie())
+	{
+		move();
+		touchfood();
+	}
+
+	gameover();
+
+	return 0;
+}
+/*************************************/
+void goto_xy(int x, int y)
+{
+	HANDLE handle;
+	COORD coord;
+	coord.X = x;
+	coord.Y = y;
+	handle = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleCursorPosition(handle, coord);
+}
+void printwall(int x, int y)
+{
+	goto_xy(x, y);
+	printf("#");
+}
+
+void printsnap(int x, int y)
+{
+	goto_xy(x, y);
+	printf("$");
+}
+void deletexy(int x, int y)
+{
+	goto_xy(x, y);
+	printf(" ");
+}
+void printwholesnap()
+{
+	struct snap* printpoint = snaphead;
+	while (printpoint != NULL)
+	{
+		printsnap(printpoint->snapx, printpoint->snapy);
+		printpoint = printpoint->next;
+	}
+}
+void headmove(int nextheadx, int nextheady)
+{
+	struct snap* snaptail = snaphead;
+	while (snaptail->next != NULL)
+	{
+		snaptail = snaptail->next;
+	}
+	deletexy(snaptail->snapx, snaptail->snapy);
+	struct snap* p = snaphead->next;
+	int x1 = snaphead->snapx, x2, y1 = snaphead->snapy, y2;
+	while (p != NULL)
+	{
+		x2 = p->snapx;
+		y2 = p->snapy;
+		p->snapx = x1;
+		p->snapy = y1;
+		x1 = x2;
+		y1 = y2;
+		p = p->next;
+	}
+	snaphead->snapx = nextheadx;
+	snaphead->snapy = nextheady;
+	printwholesnap();
+}
+
+void mapmake()
+{
+	for (int i = 0; i <= mapx; i++)
+	{
+		printwall(i, 0);
+		printwall(i, mapy);
+	}
+	for (int j = 0; j <= mapy; j++)
+	{
+		printwall(0, j);
+		printwall(mapx, j);
+	}
+}
+
+void snapmake(int x, int y)
+{
+	struct snap* newbody = (struct snap*)malloc(sizeof(struct snap*));
+	newbody->snapx = x;
+	newbody->snapy = y;
+	newbody->next = snaphead;
+	snaphead = newbody;
+}
+
+
+void foodmake()
+{
+	newfood = (struct food*)malloc(sizeof(struct food*));
+	srand((unsigned)time(NULL));
+	newfood->foodx = rand() % (mapx - 2) + 1;
+	newfood->foody = rand() % (mapy - 2) + 1;
+	goto_xy(newfood->foodx, newfood->foody);
+	printf("o");
+}
+
+void move()
+{
+	if (kbhit())
+	{
+		dir = _getwch();
+	}
+switch (dir)
+{
+	case 'w':
+		headmove((snaphead->snapx), (snaphead->snapy - 1)); break;
+	case 's':
+		headmove((snaphead->snapx), (snaphead->snapy) + 1); break; 
+	case 'a':
+		headmove((snaphead->snapx) - 1, (snaphead->snapy)); break;
+	case 'd':
+		headmove((snaphead->snapx) + 1, (snaphead->snapy)); break;
+
+}
+	Sleep(200);
+}
+
+void touchfood()
+{
+	if (newfood->foodx == snaphead->snapx && newfood->foody == snaphead->snapy)
+	{
+		deletexy(newfood->foodx, newfood->foody);
+		struct snap* newbody = (struct snap*)malloc(sizeof(struct snap*));
+		struct snap* tail = snaphead;
+		while (tail->next != NULL)
+		{
+			tail = tail->next;
+		}
+		tail->next = newbody;
+		newbody->next = NULL;
+		foodmake();
+		score++;
+	}
+}
+
+void gameover()
+{
+	system("cls");
+	goto_xy(25, 25);
+	printf("*******************************\n");
+	goto_xy(25, 26);
+	printf("                               \n");
+	goto_xy(25, 27);
+	printf("*        GAME    OVER         *\n");
+	goto_xy(25, 28);
+	printf("        your score is %d       \n", score);
+	goto_xy(25, 29);
+	printf("*                             *\n");
+	goto_xy(25, 30);
+	printf("*******************************\n");
+
+}
+
+bool ifdie()
+{
+	struct snap* detectpoint = snaphead->next;
+	while (detectpoint != NULL)
+	{
+		if (detectpoint->snapx == snaphead->snapx && detectpoint->snapy == snaphead->snapy)
+		{
+			return true;
+		}
+		else
+		{
+			detectpoint = detectpoint->next;
+		}
+	}
+
+	if (snaphead->snapx == 0 || snaphead->snapx == mapx || snaphead->snapy == 0 || snaphead->snapy == mapy)
+	{
+		return true;
+	}
+
+	return false;
+}
